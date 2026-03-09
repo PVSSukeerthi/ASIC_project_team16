@@ -1,5 +1,5 @@
 # IAMS Decoder RTL — Cui et al., IEEE TCAS-I 2020, Section V
-## Hardware Implementation in Verilog + HLS
+## Hardware Implementation in Verilog
 
 ---
 
@@ -32,19 +32,10 @@ iams_decoder/
 │   └── iams_decoder_top.v  ← Top-level integration
 │
 ├── tb/
-│   ├── tb_cnu_iams.v       ← CNU unit testbench  (1000+ random trials)
-│   ├── tb_vnu.v            ← VNU unit testbench  (500+ random trials)
-│   └── tb_iams_decoder_top.v ← System-level testbench
-│
-├── hls/
-│   ├── cnu_iams_hls.cpp    ← Vitis HLS C++ CNU (DC=10, PIPELINE II=1)
-│   └── tb_cnu_iams_hls.cpp ← HLS C++ testbench (10 000 random trials)
-│
-├── scripts/
-│   ├── vivado_sim.tcl      ← Vivado xsim batch simulation script
-│   └── hls_cnu.tcl         ← Vitis HLS synthesis script
-│
-└── Makefile                ← Icarus Verilog simulation targets
+    ├── tb_cnu_iams.v       ← CNU unit testbench  (1000+ random trials)
+    ├── tb_vnu.v            ← VNU unit testbench  (500+ random trials)
+    └── tb_iams_decoder_top.v ← System-level testbench
+
 ```
 
 ---
@@ -90,50 +81,19 @@ innovation correcting mismatch probability for low-degree check nodes.
 
 ```bash
 sudo apt install iverilog      # Ubuntu / Debian
-make sim_all                   # Runs all three testbenches
-```
-
-Individual targets:
-```bash
-make sim_cnu    # CNU unit test
-make sim_vnu    # VNU unit test
-make sim_top    # System-level test
-```
-
-View waveforms with GTKWave:
-```bash
-make wave_cnu
+iverilog -o <filename>.out <list_of_all_files>.v
+vvp <filename>.out
+gtkwave <filename>.out
 ```
 
 ### Option B: Vivado xsim
 
-```bash
-# With Vivado in PATH:
-make vivado_sim
-
-# Or interactively in Vivado TCL console:
-source scripts/vivado_sim.tcl
-```
-
-Or via GUI:
+Via GUI:
 1. **File → Project → New** → RTL Project
 2. **Add Sources** → add all files in `rtl/`
 3. **Add Simulation Sources** → add all files in `tb/`
 4. **Flow Navigator → Run Simulation → Run Behavioral Simulation**
 5. Select testbench top: `tb_cnu_iams`, `tb_vnu`, or `tb_iams_decoder_top`
-
-### Option C: Vitis HLS (CNU only)
-
-```bash
-vitis_hls -f scripts/hls_cnu.tcl
-```
-
-This will:
-1. Run C simulation (10 006 trials)
-2. Synthesise to RTL targeting xczu9eg @ 500 MHz
-3. Export as Vivado IP
-
----
 
 ## Expected Simulation Output
 
@@ -158,25 +118,3 @@ Results: 507 PASS,  0 FAIL
 ```
 
 ---
-
-## Synthesis Notes (Vivado / Vitis HLS)
-
-### RTL (cnu_iams.v)
-- Combinational logic + 1 pipeline register
-- Target: ≥ 500 MHz on UltraScale+ (per paper Table III)
-- Critical path: two-level min-finding tree → Δ comparison → output mux
-
-### HLS (cnu_iams_hls.cpp)
-- `#pragma HLS PIPELINE II=1` achieves 1 new CNU result per clock cycle
-- `#pragma HLS ARRAY_PARTITION complete` fully unrolls all DC=10 edges
-- After synthesis: inspect Schedule Viewer in Vitis HLS for timing breakdown
-
-### Area (estimated, DC=10, QW=7, UltraScale+)
-| Resource | Estimate |
-|----------|----------|
-| LUT      | ~180     |
-| FF       | ~70      |
-| DSP      | 0        |
-| BRAM     | 0        |
-
-(Actual figures depend on synthesis tool and constraints.)
